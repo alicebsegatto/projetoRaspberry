@@ -1,24 +1,48 @@
 
-import pandas as pd
+import sqlite3
 from flask import Flask, render_template
+from database import DB_PATH, init_db
 
 app = Flask(__name__)
 
+init_db()
+
+
 @app.route("/")
 def inicio():
-    # Lê os dados do CSV
-    dados = pd.read_csv("logs_acesso.csv")
+    with sqlite3.connect(DB_PATH) as conexao:
+        conexao.row_factory = sqlite3.Row
 
-    # Conta os eventos
-    entradas = (dados["event_type"] == "entrada").sum()
-    saidas = (dados["event_type"] == "saida").sum()
-    negados = (dados["event_type"] == "acesso_negado").sum()
-    invasoes = (dados["event_type"] == "invasao").sum()
+        entradas = conexao.execute(
+            "SELECT COUNT(*) FROM registros_acesso WHERE evento = 'entrada'"
+        ).fetchone()[0]
 
-    # Pega os últimos 10 registros
-    registros = dados.tail(10).to_dict("records")
+        saidas = conexao.execute(
+            "SELECT COUNT(*) FROM registros_acesso WHERE evento = 'saida'"
+        ).fetchone()[0]
 
-    # Abre o dashboard com os dados
+        negados = conexao.execute(
+            "SELECT COUNT(*) FROM registros_acesso WHERE resultado = 'negado'"
+        ).fetchone()[0]
+
+        invasoes = conexao.execute(
+            "SELECT COUNT(*) FROM registros_acesso WHERE evento = 'desconhecido'"
+        ).fetchone()[0]
+
+        registros = conexao.execute("""
+            SELECT
+                r.registrado_em,
+                c.nome,
+                r.uid,
+                r.evento,
+                r.resultado
+            FROM registros_acesso r
+            LEFT JOIN colaboradores c
+                ON r.colaborador_id = c.id
+            ORDER BY r.id DESC
+            LIMIT 10
+        """).fetchall()
+
     return render_template(
         "index.html",
         entradas=entradas,
@@ -28,4 +52,6 @@ def inicio():
         registros=registros
     )
 
-app.run(debug=True)
+
+if __name__ == "__main__":
+    app.run(debug=True)

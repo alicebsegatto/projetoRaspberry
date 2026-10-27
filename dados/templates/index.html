@@ -57,7 +57,6 @@
 
     <h1>Monitoramento RFID</h1>
 
-    <!-- Mostra a quantidade de cada evento -->
     <div class="cards">
         <div class="card">
             Entradas
@@ -75,28 +74,29 @@
         </div>
 
         <div class="card">
-            Invasões
+            Tags desconhecidas
             <p class="numero">{{ invasoes }}</p>
         </div>
     </div>
 
     <h2>Últimos acessos</h2>
 
-    <!-- Mostra os registros do CSV -->
     <table>
         <tr>
             <th>Data e hora</th>
-            <th>Nome</th>
+            <th>Colaborador</th>
+            <th>UID do cartão</th>
             <th>Evento</th>
-            <th>Detalhes</th>
+            <th>Resultado</th>
         </tr>
 
         {% for registro in registros %}
         <tr>
-            <td>{{ registro["timestamp"] }}</td>
-            <td>{{ registro["name"] }}</td>
-            <td>{{ registro["event_type"] }}</td>
-            <td>{{ registro["details"] }}</td>
+            <td>{{ registro["registrado_em"] }}</td>
+            <td>{{ registro["nome"] or "Desconhecido" }}</td>
+            <td>{{ registro["uid"] }}</td>
+            <td>{{ registro["evento"] }}</td>
+            <td>{{ registro["resultado"] }}</td>
         </tr>
         {% endfor %}
     </table>
