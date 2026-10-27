@@ -1,0 +1,105 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoramento RFID</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 30px;
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        .cards {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background-color: white;
+            padding: 20px;
+            flex: 1;
+            text-align: center;
+            border-radius: 8px;
+        }
+
+        .numero {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            background-color: white;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #ddd;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Monitoramento RFID</h1>
+
+    <!-- Mostra a quantidade de cada evento -->
+    <div class="cards">
+        <div class="card">
+            Entradas
+            <p class="numero">{{ entradas }}</p>
+        </div>
+
+        <div class="card">
+            Saídas
+            <p class="numero">{{ saidas }}</p>
+        </div>
+
+        <div class="card">
+            Acessos negados
+            <p class="numero">{{ negados }}</p>
+        </div>
+
+        <div class="card">
+            Invasões
+            <p class="numero">{{ invasoes }}</p>
+        </div>
+    </div>
+
+    <h2>Últimos acessos</h2>
+
+    <!-- Mostra os registros do CSV -->
+    <table>
+        <tr>
+            <th>Data e hora</th>
+            <th>Nome</th>
+            <th>Evento</th>
+            <th>Detalhes</th>
+        </tr>
+
+        {% for registro in registros %}
+        <tr>
+            <td>{{ registro["timestamp"] }}</td>
+            <td>{{ registro["name"] }}</td>
+            <td>{{ registro["event_type"] }}</td>
+            <td>{{ registro["details"] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+</body>
+</html>
