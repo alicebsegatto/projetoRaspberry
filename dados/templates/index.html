@@ -1,105 +1,372 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitoramento RFID</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
-            margin: 30px;
+            background: linear-gradient(135deg, #fff0f6, #fce4ef);
+            margin: 0;
+            padding: 25px 35px;
+            color: #63334a;
         }
 
-        h1, h2 {
-            text-align: center;
-        }
-
-        .cards {
+        /* Cabeçalho */
+        header {
             display: flex;
-            gap: 15px;
-            margin-bottom: 30px;
+            align-items: center;
+            gap: 25px;
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid #f7cddd;
+            border-radius: 18px;
+            padding: 20px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 10px rgba(190, 55, 105, 0.06);
+        }
+
+        .logo {
+            font-size: 55px;
+            background: linear-gradient(135deg, #f47da7, #c72d66);
+            width: 95px;
+            height: 95px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 22px;
+            flex-shrink: 0;
+        }
+
+        .titulo h1 {
+            color: #b92358;
+            font-size: 38px;
+            margin: 0 0 10px;
+        }
+
+        .titulo p {
+            color: #d8759a;
+            font-size: 19px;
+            margin: 0;
+        }
+
+        .sinal {
+            margin-left: auto;
+            font-size: 48px;
+            color: #e84c88;
+        }
+
+        /* Cartões de resumo */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 25px;
         }
 
         .card {
-            background-color: white;
-            padding: 20px;
-            flex: 1;
-            text-align: center;
-            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            min-height: 155px;
+            padding: 22px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid #f3ccdc;
+            border-radius: 15px;
+            box-shadow: 0 3px 8px rgba(190, 55, 105, 0.06);
+        }
+
+        .icone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 75px;
+            height: 75px;
+            flex-shrink: 0;
+            background-color: #fde5ef;
+            border-radius: 50%;
+            font-size: 35px;
+        }
+
+        .card h3 {
+            font-size: 18px;
+            color: #a51e5a;
+            margin: 0 0 15px;
         }
 
         .numero {
-            font-size: 25px;
+            font-size: 43px;
             font-weight: bold;
+            color: #c51e50;
+            margin: 0;
+        }
+
+        /* Área dos últimos acessos */
+        .secao {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #f5ccdc;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 3px 10px rgba(190, 55, 105, 0.05);
+        }
+
+        .secao-cabecalho {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .icone-relogio {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #f47da7, #c72d66);
+            border-radius: 50%;
+            color: white;
+            font-size: 27px;
+        }
+
+        .secao h2 {
+            color: #a51e5a;
+            font-size: 25px;
+            margin: 0;
+        }
+
+        .detalhe {
+            margin-left: auto;
+            width: 65px;
+            height: 6px;
+            border-radius: 10px;
+            background-color: #f7cddd;
+        }
+
+        /* Tabela */
+        .tabela-container {
+            overflow-x: auto;
+            border: 1px solid #f5ccdc;
+            border-radius: 12px;
         }
 
         table {
             width: 100%;
-            background-color: white;
             border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: left;
+            background-color: white;
         }
 
         th {
-            background-color: #ddd;
+            background: #fce0eb;
+            color: #a51e5a;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 16px 22px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 13px 22px;
+            border-bottom: 1px solid #faedf2;
+            color: #51465e;
+            font-size: 15px;
+            white-space: nowrap;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fff5f9;
+        }
+
+        tbody tr:hover {
+            background-color: #fce5ef;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .permitido {
+            color: #37865a;
+            font-weight: bold;
+        }
+
+        .negado {
+            color: #c42d64;
+            font-weight: bold;
+        }
+
+        /* Ajustes para telas menores */
+        @media (max-width: 1000px) {
+            .cards {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .titulo h1 {
+                font-size: 30px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            header {
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .logo {
+                width: 55px;
+                height: 55px;
+                font-size: 32px;
+            }
+
+            .titulo h1 {
+                font-size: 22px;
+            }
+
+            .titulo p {
+                font-size: 14px;
+            }
+
+            .sinal {
+                display: none;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                min-height: 120px;
+            }
+
+            .secao {
+                padding: 15px;
+            }
+
+            .secao h2 {
+                font-size: 20px;
+            }
+
+            th,
+            td {
+                padding: 12px;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <h1>Monitoramento RFID</h1>
+    <!-- Cabeçalho -->
+    <header>
+        <div class="logo">🔒</div>
 
+        <div class="titulo">
+            <h1>Monitoramento RFID</h1>
+            <p>Mais segurança para o seu ambiente</p>
+        </div>
+
+        <div class="sinal">)))</div>
+    </header>
+
+    <!-- Resumo dos acessos -->
     <div class="cards">
+
         <div class="card">
-            Entradas
-            <p class="numero">{{ entradas }}</p>
+            <div class="icone">🚪</div>
+            <div>
+                <h3>Entradas</h3>
+                <p class="numero">{{ entradas }}</p>
+            </div>
         </div>
 
         <div class="card">
-            Saídas
-            <p class="numero">{{ saidas }}</p>
+            <div class="icone">🚪</div>
+            <div>
+                <h3>Saídas</h3>
+                <p class="numero">{{ saidas }}</p>
+            </div>
         </div>
 
         <div class="card">
-            Acessos negados
-            <p class="numero">{{ negados }}</p>
+            <div class="icone">🚫</div>
+            <div>
+                <h3>Acessos negados</h3>
+                <p class="numero">{{ negados }}</p>
+            </div>
         </div>
 
         <div class="card">
-            Tags desconhecidas
-            <p class="numero">{{ invasoes }}</p>
+            <div class="icone">⚠️</div>
+            <div>
+                <h3>Tags desconhecidas</h3>
+                <p class="numero">{{ invasoes }}</p>
+            </div>
         </div>
+
     </div>
 
-    <h2>Últimos acessos</h2>
+    <!-- Últimos registros -->
+    <section class="secao">
 
-    <table>
-        <tr>
-            <th>Data e hora</th>
-            <th>Colaborador</th>
-            <th>UID do cartão</th>
-            <th>Evento</th>
-            <th>Resultado</th>
-        </tr>
+        <div class="secao-cabecalho">
+            <div class="icone-relogio">◷</div>
+            <h2>Últimos acessos</h2>
+            <div class="detalhe"></div>
+        </div>
 
-        {% for registro in registros %}
-        <tr>
-            <td>{{ registro["registrado_em"] }}</td>
-            <td>{{ registro["nome"] or "Desconhecido" }}</td>
-            <td>{{ registro["uid"] }}</td>
-            <td>{{ registro["evento"] }}</td>
-            <td>{{ registro["resultado"] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+        <div class="tabela-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data e hora</th>
+                        <th>Colaborador</th>
+                        <th>UID do cartão</th>
+                        <th>Evento</th>
+                        <th>Resultado</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for registro in registros %}
+                    <tr>
+                        <td>{{ registro["registrado_em"] }}</td>
+
+                        <td>
+                            {{ registro["nome"] or "Desconhecido" }}
+                        </td>
+
+                        <td>{{ registro["uid"] }}</td>
+
+                        <td>{{ registro["evento"] }}</td>
+
+                        <td class="{{ 'permitido' if registro['resultado'] == 'permitido' else 'negado' }}">
+                            {{ registro["resultado"] }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center;">
+                            Nenhum acesso registrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </section>
 
 </body>
+
 </html>
