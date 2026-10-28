@@ -12,9 +12,14 @@ from flask import (
     url_for,
 )
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder="templates_front",
+    static_folder="static",
+    static_url_path="/static"
+)
 app.secret_key = os.environ.get(
-    "FLASK_SECRET_KEY", "trocar"
+    "FLASK_SECRET_KEY", "troque"
 )
 
 # API do integrante do back-end. É possível sobrescrever via variável de ambiente.
@@ -272,4 +277,4 @@ def verificar_api():
 
 if __name__ == "__main__":
     # O back-end usa a porta 5000; o front-end usa 5001 para evitar conflito.
-    app.run(host="127.0.0.3", port=5001, debug=False)
+    app.run(host="127.0.0.1", port=5001, debug=False)
