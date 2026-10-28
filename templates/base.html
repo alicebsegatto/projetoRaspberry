@@ -9,13 +9,13 @@
 <body>
 <header class="topo">
   <div class="container topo-conteudo">
-    <a class="marca" href="{{ url_for('index') if session.get('colaborador_id') else url_for('login') }}">Controle de Acesso RFID</a>
+    <a class="marca" href="{{ url_for('inicio') }}">Controle de Acesso RFID</a>
     {% if session.get('colaborador_id') %}
     <nav aria-label="Navegação principal">
       <a href="{{ url_for('index') }}">Colaboradores</a>
       <a href="{{ url_for('eventos') }}">Eventos</a>
       <a href="{{ url_for('novo_colaborador') }}">Novo cadastro</a>
-      <a href="{{ url_for('health_api') }}">Status da API</a>
+      <a href="{{ url_for('verificar_api') }}">Status da API</a>
       <span class="usuario">Olá, {{ session.get('colaborador_nome') }}</span>
       <form class="form-logout" method="post" action="{{ url_for('logout') }}">
         <button class="link-nav" type="submit">Sair</button>
