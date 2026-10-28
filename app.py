@@ -445,6 +445,192 @@ def registrar_acesso():
     finally:
         connection.close()
 
+@app.route("/colaboradores/<int:colaborador_id>", methods=["PUT", "PATCH"])
+def editar_colaborador(colaborador_id):
+    dados = request.get_json(silent=True)
+
+    if not isinstance(dados, dict) or not dados:
+        return jsonify({"erro": "Envie os dados em formato JSON."}), 400
+
+    campos_permitidos = {
+        "matricula": str,
+        "nome": str,
+        "funcao": str,
+        "autorizado": bool,
+        "ativo": bool
+    }
+
+    for campo, valor in dados.items():
+        if campo not in campos_permitidos:
+            return jsonify({"erro": f"Campo '{campo}' não permitido."}), 400
+
+        if not isinstance(valor, campos_permitidos[campo]):
+            return jsonify({"erro": f"Valor inválido para '{campo}'."}), 400
+
+        if isinstance(valor, str) and not valor.strip():
+            return jsonify({"erro": f"O campo '{campo}' não pode ficar vazio."}), 400
+
+    campos = []
+    valores = []
+
+    for campo, valor in dados.items():
+        campos.append(f"{campo} = ?")
+        valores.append(int(valor) if isinstance(valor, bool) else valor.strip()
+                       if isinstance(valor, str) else valor)
+
+    connection = get_connection()
+
+    try:
+        colaborador = connection.execute(
+            "SELECT id FROM colaboradores WHERE id = ?",
+            (colaborador_id,)
+        ).fetchone()
+
+        if colaborador is None:
+            return jsonify({"erro": "Colaborador não encontrado."}), 404
+
+        valores.append(colaborador_id)
+
+        connection.execute(
+            f"UPDATE colaboradores SET {', '.join(campos)} WHERE id = ?",
+            valores
+        )
+
+        connection.commit()
+
+        return jsonify({
+            "mensagem": "Colaborador atualizado com sucesso."
+        }), 200
+
+    except Exception as erro:
+        connection.rollback()
+
+        if "UNIQUE constraint failed" in str(erro):
+            return jsonify({"erro": "Essa matrícula já está cadastrada."}), 409
+
+        app.logger.exception("Erro ao editar colaborador")
+        return jsonify({"erro": "Não foi possível editar o colaborador."}), 500
+
+    finally:
+        connection.close()
+
+@app.route("/colaboradores/<int:colaborador_id>", methods=["DELETE"])
+def excluir_colaborador(colaborador_id):
+    connection = get_connection()
+
+    try:
+        colaborador = connection.execute(
+            "SELECT id FROM colaboradores WHERE id = ?",
+            (colaborador_id,)
+        ).fetchone()
+
+        if colaborador is None:
+            return jsonify({"erro": "Colaborador não encontrado."}), 404
+
+        connection.execute(
+            "UPDATE colaboradores SET ativo = 0 WHERE id = ?",
+            (colaborador_id,)
+        )
+
+        connection.execute(
+            "UPDATE cartoes_rfid SET ativo = 0 WHERE colaborador_id = ?",
+            (colaborador_id,)
+        )
+
+        connection.commit()
+
+        return jsonify({
+            "mensagem": "Colaborador desativado com sucesso."
+        }), 200
+
+    except Exception:
+        connection.rollback()
+        app.logger.exception("Erro ao excluir colaborador")
+
+        return jsonify({
+            "erro": "Não foi possível excluir o colaborador."
+        }), 500
+
+    finally:
+        connection.close()
+
+@app.route(
+    "/colaboradores/<int:colaborador_id>/cartao",
+    methods=["PUT", "PATCH"]
+)
+def editar_cartao_colaborador(colaborador_id):
+    dados = request.get_json(silent=True)
+
+    if not isinstance(dados, dict):
+        return jsonify({"erro": "Envie os dados em formato JSON."}), 400
+
+    uid = dados.get("uid")
+
+    if not isinstance(uid, str) or not uid.strip():
+        return jsonify({"erro": "O UID do cartão é obrigatório."}), 400
+
+    uid = uid.strip()
+    connection = get_connection()
+
+    try:
+        colaborador = connection.execute(
+            "SELECT id FROM colaboradores WHERE id = ? AND ativo = 1",
+            (colaborador_id,)
+        ).fetchone()
+
+        if colaborador is None:
+            return jsonify({
+                "erro": "Colaborador não encontrado ou inativo."
+            }), 404
+
+        cartao_existente = connection.execute(
+            "SELECT id FROM cartoes_rfid WHERE colaborador_id = ?",
+            (colaborador_id,)
+        ).fetchone()
+
+        if cartao_existente:
+            connection.execute(
+                """
+                UPDATE cartoes_rfid
+                SET uid = ?, ativo = 1
+                WHERE colaborador_id = ?
+                """,
+                (uid, colaborador_id)
+            )
+        else:
+            connection.execute(
+                """
+                INSERT INTO cartoes_rfid (uid, colaborador_id)
+                VALUES (?, ?)
+                """,
+                (uid, colaborador_id)
+            )
+
+        connection.commit()
+
+        return jsonify({
+            "mensagem": "Cartão RFID cadastrado ou atualizado com sucesso.",
+            "uid": uid,
+            "colaborador_id": colaborador_id
+        }), 200
+
+    except Exception as erro:
+        connection.rollback()
+
+        if "UNIQUE constraint failed" in str(erro):
+            return jsonify({
+                "erro": "Este UID já está associado a outro cartão."
+            }), 409
+
+        app.logger.exception("Erro ao atualizar cartão RFID")
+
+        return jsonify({
+            "erro": "Não foi possível atualizar o cartão RFID."
+        }), 500
+
+    finally:
+        connection.close()
+
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=5000, debug=False)
