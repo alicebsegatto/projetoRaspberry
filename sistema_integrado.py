@@ -1,8 +1,9 @@
-
+# Bibliotecas: pinos da Raspberry, leitor RFID e funcoes que falam com a API
 import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 from cadastro_integrado import buscar_colaborador, registrar_acesso_api
 
+# Bibliotecas de apoio: tempo, arquivos CSV/JSON e datas
 import time
 import csv
 import json
@@ -11,22 +12,17 @@ import os
 from datetime import datetime
 
 
-# ==========================================
-# CONFIGURACAO DOS PINOS - BCM
-# ==========================================
-
+# Pinos ligados na Raspberry
 LED_VERDE = 11
 LED_VERMELHO = 13
 BUZZER = 15
 
+# Arquivos: log de eventos e memoria do sistema
 ARQUIVO_LOG = "logs_acesso.csv"
 ARQUIVO_ESTADO = "estado_sistema.json"
 
 
-# ==========================================
-# CARREGAR ESTADO SALVO
-# ==========================================
-
+# Le a memoria salva (quem esta dentro, tempos, tentativas). Se nao existe, comeca vazia
 def carregar_estado():
     if os.path.exists(ARQUIVO_ESTADO):
         with open(ARQUIVO_ESTADO, "r", encoding="utf-8") as arquivo:
@@ -45,13 +41,11 @@ estado.setdefault("colaboradores", {})
 estado.setdefault("tentativas_negadas", {})
 estado.setdefault("tags_desconhecidas", {})
 
+# Pessoas autorizadas que passaram pelo leitor (usado no relatorio)
 colaboradores = {}
 
 
-# ==========================================
-# INICIALIZAR GPIO E LEITOR RFID
-# ==========================================
-
+# Liga o leitor e configura LEDs e buzzer como saidas
 GPIO.setwarnings(False)
 
 # SimpleMFRC522 configura o modo GPIO internamente.
@@ -64,19 +58,13 @@ GPIO.setup(LED_VERMELHO, GPIO.OUT, initial=GPIO.LOW)
 GPIO.setup(BUZZER, GPIO.OUT, initial=GPIO.LOW)
 
 
-# ==========================================
-# SALVAR ESTADO
-# ==========================================
-
+# Salva a memoria do sistema no arquivo
 def salvar_estado():
     with open(ARQUIVO_ESTADO, "w", encoding="utf-8") as arquivo:
         json.dump(estado, arquivo, indent=4, ensure_ascii=False)
 
 
-# ==========================================
-# REGISTRAR EVENTOS EM CSV
-# ==========================================
-
+# Registra o evento no CSV e envia para a API
 def registrar_evento(evento, id_cracha, nome, detalhe=""):
     arquivo_vazio = (
         not os.path.exists(ARQUIVO_LOG)
@@ -115,10 +103,8 @@ def registrar_evento(evento, id_cracha, nome, detalhe=""):
         print("Aviso: nao foi possivel enviar o evento para a API.")
 
 
-# ==========================================
-# BUZZER
-# ==========================================
 
+# Sons e luzes: cada situacao tem um padrao diferente
 def bip(duracao=0.2):
     GPIO.output(BUZZER, GPIO.HIGH)
     time.sleep(duracao)
@@ -131,10 +117,7 @@ def alerta_sonoro(quantidade, duracao=0.15, pausa=0.15):
         time.sleep(pausa)
 
 
-# ==========================================
-# SINAIS DOS LEDS E BUZZER
-# ==========================================
-
+# Acesso liberado: LED verde + 1 bipe
 def sinal_acesso_liberado():
     GPIO.output(LED_VERDE, GPIO.HIGH)
     bip(0.2)
@@ -142,6 +125,7 @@ def sinal_acesso_liberado():
     GPIO.output(LED_VERDE, GPIO.LOW)
 
 
+# Acesso negado: LED vermelho + 3 bipes
 def sinal_acesso_negado():
     GPIO.output(LED_VERMELHO, GPIO.HIGH)
     alerta_sonoro(3)
@@ -149,6 +133,7 @@ def sinal_acesso_negado():
     GPIO.output(LED_VERMELHO, GPIO.LOW)
 
 
+# Cracha desconhecido (possivel invasao): LED vermelho piscando + bipes
 def sinal_tag_desconhecida():
     print("ALERTA: possivel tentativa de invasao!")
 
@@ -160,10 +145,7 @@ def sinal_tag_desconhecida():
         time.sleep(0.1)
 
 
-# ==========================================
-# FORMATAR TEMPO
-# ==========================================
-
+# Transforma segundos em horas, minutos e segundos
 def formatar_tempo(segundos):
     segundos = max(0, int(segundos))
     horas = segundos // 3600
@@ -173,10 +155,7 @@ def formatar_tempo(segundos):
     return f"{horas}h {minutos}min {segundos}s"
 
 
-# ==========================================
-# PROCESSAR COLABORADOR
-# ==========================================
-
+# Entrada ou saida de quem tem permissao: o mesmo cracha alterna
 def processar_colaborador(id_cracha, colaborador):
     hoje = datetime.now().strftime("%Y-%m-%d")
     nome = colaborador["nome"]
@@ -202,6 +181,7 @@ def processar_colaborador(id_cracha, colaborador):
         sinal_acesso_negado()
         return
 
+    # Se estava dentro: registra a SAIDA e soma o tempo de permanencia
     # Se estiver dentro, registrar a saida
     if dados["dentro"]:
         agora = time.time()
@@ -233,6 +213,7 @@ def processar_colaborador(id_cracha, colaborador):
         sinal_acesso_liberado()
         return
 
+    # Se estava fora: registra a ENTRADA (primeira do dia ou volta)
     # Nova entrada
     if dados["primeira_entrada_data"] != hoje:
         print(f"Bem-vindo, {nome}!")
@@ -255,10 +236,7 @@ def processar_colaborador(id_cracha, colaborador):
     sinal_acesso_liberado()
 
 
-# ==========================================
-# RELATORIO FINAL
-# ==========================================
-
+# Resumo do dia mostrado ao encerrar
 def gerar_relatorio():
     hoje = datetime.now().strftime("%Y-%m-%d")
 
@@ -304,10 +282,7 @@ def gerar_relatorio():
     print("=" * 45)
 
 
-# ==========================================
-# EXECUCAO PRINCIPAL
-# ==========================================
-
+# PROGRAMA PRINCIPAL: repete para cada cracha lido
 try:
     print("=" * 45)
     print("SISTEMA DE CONTROLE DE ACESSO RFID")
@@ -317,12 +292,15 @@ try:
     print("Pressione Ctrl+C para encerrar.\n")
 
     while True:
+        # Espera um cracha chegar perto do leitor
         id_cracha, texto = leitorRfid.read()
         id_cracha = str(id_cracha)
 
         print(f"\nID do cartao: {id_cracha}")
+        # Pergunta a API quem e a pessoa e se tem permissao
         colaborador = buscar_colaborador(id_cracha)
 
+        # Caso 1: API fora do ar -> nega por seguranca
         if colaborador.get("erro_conexao"):
             print("ERRO: nao foi possivel consultar a API.")
             print("O acesso sera negado por seguranca.")
@@ -332,6 +310,7 @@ try:
             )
             sinal_acesso_negado()
 
+        # Caso 2: cracha nao cadastrado -> alerta de invasao
         elif colaborador.get("motivo") == "cartao_desconhecido":
             print("Identificacao nao encontrada!")
             hoje = datetime.now().strftime("%Y-%m-%d")
@@ -345,6 +324,7 @@ try:
             salvar_estado()
             sinal_tag_desconhecida()
 
+        # Caso 3: cadastrado, mas sem permissao -> acesso negado
         elif not colaborador.get("autorizado", False):
             nome = colaborador.get("nome", "Desconhecido")
             print(f"Acesso negado: {nome}.")
@@ -360,6 +340,7 @@ try:
             salvar_estado()
             sinal_acesso_negado()
 
+        # Caso 4: autorizado -> registra entrada ou saida
         else:
             colaboradores[id_cracha] = colaborador
             estado["colaboradores"].setdefault(
@@ -377,9 +358,11 @@ try:
         print("\nAproxime outro cracha.")
         time.sleep(1)
 
+# Ctrl+C encerra o programa
 except KeyboardInterrupt:
     print("\nEncerrando o sistema...")
 
+# No fim, sempre mostra o relatorio e libera os pinos
 finally:
     try:
         gerar_relatorio()

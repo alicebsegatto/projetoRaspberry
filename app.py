@@ -7,13 +7,13 @@ from database import get_connection, init_db
 
 app = Flask(__name__)
 
-
+# As credenciais e a chave de sessão são carregadas do ambiente, não do código-fonte
 app.config["SECRET_KEY"] = os.environ["FLASK_SECRET_KEY"]
 
 USUARIO_ADMIN = os.environ["ADMIN_USUARIO"]
 SENHA_ADMIN = os.environ["ADMIN_SENHA"]
 
-
+# Restringe endpoints administrativos a sessões autenticadas
 def login_obrigatorio(func):
     @wraps(func)
     def verificar_login(*args, **kwargs):
@@ -26,7 +26,7 @@ def login_obrigatorio(func):
 
     return verificar_login
 
-
+# Autentica o administrador e cria uma sessão após validar as credenciais.
 @app.route("/login", methods=["POST"])
 def login():
     dados = request.get_json(silent=True)
@@ -56,7 +56,7 @@ def login():
         "erro": "Usuario ou senha incorretos."
     }), 401
 
-
+# Encerra a sessão administrativa atual
 @app.route("/logout", methods=["POST"])
 @login_obrigatorio
 def logout():
@@ -66,6 +66,7 @@ def logout():
         "mensagem": "Logout realizado com sucesso."
     }), 200
 
+# Apresenta uma página simples com as principais rotas disponíveis na API
 @app.route("/", methods=["GET"])
 def inicio():
     return """
@@ -105,7 +106,7 @@ def inicio():
     """
 
 
-
+# Endpoint público para verificar se o serviço está ativo.
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
@@ -113,7 +114,7 @@ def health():
         "servico": "Sistema de Seguranca RFID"
     }), 200
 
-
+# Retorna os colaboradores e quando existe o UID do cartão associado
 @app.route("/colaboradores", methods=["GET"])
 @login_obrigatorio
 def listar_colaboradores():
@@ -143,7 +144,7 @@ def listar_colaboradores():
     finally:
         connection.close()
 
-
+# Valida os campos recebidos e cadastra um novo colaborador
 @app.route("/colaboradores", methods=["POST"])
 @login_obrigatorio
 def cadastrar_colaborador():
@@ -223,7 +224,7 @@ def cadastrar_colaborador():
     finally:
         connection.close()
 
-
+# Consulta os 100 registros de acesso mais recentes, incluindo dados do colaborador
 @app.route("/acessos", methods=["GET"])
 @login_obrigatorio
 def listar_acessos():
@@ -254,7 +255,7 @@ def listar_acessos():
     finally:
         connection.close()
 
-
+# Consolida indicadores, acessos recentes, pessoas na sala e alertas de segurança
 @app.route("/monitoramento", methods=["GET"])
 @login_obrigatorio
 def monitoramento():
@@ -284,7 +285,7 @@ def monitoramento():
             WHERE resultado = 'negado'
         """).fetchone()["total"]
 
-        
+        # Recupera os últimos acessos registrados para exibição no painel
         ultimos_acessos = connection.execute("""
             SELECT
                 r.id,
@@ -301,7 +302,7 @@ def monitoramento():
             LIMIT 20
         """).fetchall()
 
-        
+        # Considera na sala quem teve como último evento válido uma entrada
         colaboradores_na_sala = connection.execute("""
             SELECT
                 c.id,
@@ -322,7 +323,7 @@ def monitoramento():
             AND r.resultado = 'permitido'
         """).fetchall()
 
-        
+        # Lista tentativas negadas e eventos associados a cartões desconhecidos   
         alertas_recentes = connection.execute("""
             SELECT
                 r.id,
@@ -362,6 +363,7 @@ def monitoramento():
     finally:
         connection.close()
 
+# Associa um novo cartão RFID a um colaborador ativo
 @app.route("/cartoes", methods=["POST"])
 @login_obrigatorio
 def cadastrar_cartao():
@@ -437,6 +439,7 @@ def cadastrar_cartao():
     finally:
         connection.close()
 
+# Valida o UID lido pelo equipamento e informa se o acesso pode ser permitido
 @app.route("/rfid/validar", methods=["POST"])
 def validar_rfid():
     dados = request.get_json(silent=True)
@@ -516,6 +519,7 @@ def validar_rfid():
     finally:
         connection.close()
 
+# Registra o resultado de uma tentativa de acesso enviada pelo sistema RFID
 @app.route("/acessos/registrar", methods=["POST"])
 def registrar_acesso():
     dados = request.get_json(silent=True)
@@ -634,6 +638,7 @@ def registrar_acesso():
     finally:
         connection.close()
 
+# Atualiza os campos permitidos de um colaborador existente
 @app.route("/colaboradores/<int:colaborador_id>", methods=["PUT", "PATCH"])
 @login_obrigatorio
 def editar_colaborador(colaborador_id):
@@ -704,6 +709,7 @@ def editar_colaborador(colaborador_id):
     finally:
         connection.close()
 
+# Desativa o colaborador e seu cartão sem apagar o histórico de acessos
 @app.route("/colaboradores/<int:colaborador_id>", methods=["DELETE"])
 @login_obrigatorio
 def excluir_colaborador(colaborador_id):
@@ -745,6 +751,7 @@ def excluir_colaborador(colaborador_id):
     finally:
         connection.close()
 
+# Cadastra ou substitui o cartão RFID de um colaborador ativo
 @app.route(
     "/colaboradores/<int:colaborador_id>/cartao",
     methods=["PUT", "PATCH"]
@@ -823,6 +830,7 @@ def editar_cartao_colaborador(colaborador_id):
     finally:
         connection.close()
 
+# Inicializa a estrutura do banco e inicia o servidor quando executado diretamente
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=5000, debug=False)

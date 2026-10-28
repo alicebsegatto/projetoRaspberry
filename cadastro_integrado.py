@@ -7,22 +7,25 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 # Troque pelo IPv4 do computador onde o Flask está rodando.
-# Exemplo: API_BASE = "http://192.168.0.10:5001"
 API_BASE = "http://IP_DO_COMPUTADOR:5000"
 
+# Tempo máximo, em segundos, para aguardar uma resposta da API
 TEMPO_LIMITE = 3
 
+# Caminho do arquivo que armazena localmente os dados de colaboradores já consultados
 ARQUIVO_CACHE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "cache_rfid.json"
 )
 
+# Caminho do arquivo que mantém os registros de acesso que ainda não foram enviados  API
 ARQUIVO_PENDENTES = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "acessos_pendentes.json"
 )
 
 def carregar_cache():
+    # Carrega os dados locais dos cartões
     if not os.path.exists(ARQUIVO_CACHE):
         return {}
 
@@ -30,10 +33,12 @@ def carregar_cache():
         with open(ARQUIVO_CACHE, "r", encoding="utf-8") as arquivo:
             return json.load(arquivo)
     except (OSError, ValueError):
+        # Retorna um cache vazio caso o arquivo não esteja disponível
         return {}
 
 
 def salvar_cache(uid, colaborador):
+    # Atualiza os dados armazenados para o UID informado
     cache = carregar_cache()
 
     cache[str(uid)] = colaborador
@@ -42,17 +47,20 @@ def salvar_cache(uid, colaborador):
         json.dump(cache, arquivo, indent=4, ensure_ascii=False)
 
 def salvar_acesso_pendente(uid, evento, resultado):
+    # Mantém os acessos que precisam ser enviados posteriormente
     pendentes = []
 
     if os.path.exists(ARQUIVO_PENDENTES):
         try:
             with open(ARQUIVO_PENDENTES, "r", encoding="utf-8") as arquivo:
                 pendentes = json.load(arquivo)
+                # Verifica se o arquivo contém uma lista de registros
                 if not isinstance(pendentes, list):
                     pendentes = []
         except (OSError, ValueError):
             pendentes = []
 
+    # Inicia uma lista vazia se não for possível carregar os registros.
     pendentes.append({
         "evento_id": str(uuid.uuid4()),
         "uid": str(uid),
@@ -65,25 +73,26 @@ def salvar_acesso_pendente(uid, evento, resultado):
         json.dump(pendentes, arquivo, indent=4, ensure_ascii=False)
 
 def sincronizar_acessos_pendentes():
+    # Reenvia os registros armazenados durante períodos sem conexão.
     if not os.path.exists(ARQUIVO_PENDENTES):
         return
 
     try:
         with open(ARQUIVO_PENDENTES, "r", encoding="utf-8") as arquivo:
             pendentes = json.load(arquivo)
-
+        # Confere o formato dos registros pendentes.
         if not isinstance(pendentes, list):
             return
 
     except (OSError, ValueError):
+         # Interrompe a sincronização se o arquivo não puder ser lido
         return
 
     restantes = []
 
     for indice, acesso in enumerate(pendentes):
-        sincronizar_acessos_pendentes()
         resposta = _requisicao_api("/acessos/registrar", acesso)
-
+        # Mantém os registros restantes caso ocorra uma falha no envio
         if resposta.get("erro_conexao") or resposta.get("erro_http"):
             restantes = pendentes[indice:]
             break
