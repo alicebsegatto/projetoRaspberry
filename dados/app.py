@@ -1,3 +1,4 @@
+
 import sqlite3
 from flask import Flask, render_template, jsonify
 from database import DB_PATH, init_db
@@ -29,9 +30,15 @@ def inicio():
         ).fetchone()[0]
 
         registros = conexao.execute("""
-            SELECT r.registrado_em, c.nome, r.uid, r.evento, r.resultado
+            SELECT
+                r.registrado_em,
+                c.nome,
+                r.uid,
+                r.evento,
+                r.resultado
             FROM registros_acesso r
-            LEFT JOIN colaboradores c ON r.colaborador_id = c.id
+            LEFT JOIN colaboradores c
+                ON r.colaborador_id = c.id
             ORDER BY r.id DESC
             LIMIT 10
         """).fetchall()
@@ -52,9 +59,14 @@ def listar_acessos():
         conexao.row_factory = sqlite3.Row
 
         registros = conexao.execute("""
-            SELECT r.*, c.nome, c.matricula, c.autorizado
+            SELECT
+                r.*,
+                c.nome,
+                c.matricula,
+                c.autorizado
             FROM registros_acesso r
-            LEFT JOIN colaboradores c ON r.colaborador_id = c.id
+            LEFT JOIN colaboradores c
+                ON r.colaborador_id = c.id
             ORDER BY r.id DESC
             LIMIT 100
         """).fetchall()
@@ -63,4 +75,4 @@ def listar_acessos():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)
