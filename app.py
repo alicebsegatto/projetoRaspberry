@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, session
 from functools import wraps
 import os
 import hmac
+from datetime import datetime
 from database import get_connection, init_db
 
 app = Flask(__name__)
@@ -527,6 +528,29 @@ def registrar_acesso():
     uid = dados.get("uid")
     evento = dados.get("evento")
     resultado = dados.get("resultado")
+    data_hora = dados.get("data_hora")
+    evento_id = dados.get("evento_id")
+
+    if evento_id is not None and (
+    not isinstance(evento_id, str) or not evento_id.strip()
+    ):
+        return jsonify({
+            "erro": "Identificador do evento invalido."
+        }), 400
+
+    if data_hora is not None:
+        if not isinstance(data_hora, str):
+            return jsonify({
+                "erro": "Data e hora invalidas."
+            }), 400
+
+        try:
+            data_hora = datetime.fromisoformat(data_hora)
+            data_hora = data_hora.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, OverflowError):
+            return jsonify({
+                "erro": "Formato de data e hora invalido."
+            }), 400
 
     eventos_validos = [
         "entrada",
@@ -575,14 +599,19 @@ def registrar_acesso():
                 colaborador_id,
                 uid,
                 evento,
-                resultado
+                resultado,
+                registrado_em,
+                evento_id
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, COALESCE(?, datetime('now', 'localtime')), ?)
+            ON CONFLICT(evento_id) DO NOTHING
         """, (
             colaborador_id,
             uid.strip(),
             evento,
-            resultado
+            resultado,
+            data_hora,
+            evento_id
         ))
 
         connection.commit()

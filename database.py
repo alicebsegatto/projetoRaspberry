@@ -75,6 +75,24 @@ def init_db():
             ON cartoes_rfid(uid);
         """)
 
+        colunas = connection.execute(
+            "PRAGMA table_info(registros_acesso)"
+        ).fetchall()
+
+        nomes_colunas = [coluna["name"] for coluna in colunas]
+
+        if "evento_id" not in nomes_colunas:
+            connection.execute("""
+                ALTER TABLE registros_acesso
+                ADD COLUMN evento_id TEXT
+            """)
+
+        connection.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_registros_evento_id
+            ON registros_acesso(evento_id)
+        """)
+
+
     print(f"Banco de dados inicializado em: {DB_PATH}")
 
 
