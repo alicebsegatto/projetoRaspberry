@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Eventos | Controle RFID{% endblock %}
+{% block content %}
+<section class="cabecalho-pagina">
+  <div>
+    <h1>Eventos de acesso</h1>
+    {% if matricula_filtro %}<p>Filtrando pela matrícula <code>{{ matricula_filtro }}</code> ({{ nome_filtro }}).</p>
+    {% elif nome_filtro %}<p>Filtro: {{ nome_filtro }}</p>
+    {% else %}<p>Últimos registros devolvidos pela API (até 100 registros).</p>{% endif %}
+  </div>
+  <a class="botao secundario" href="{{ url_for('index') }}">Voltar aos colaboradores</a>
+</section>
+<div class="cartao tabela-wrap">
+<table>
+  <thead><tr><th>ID</th><th>Data e hora</th><th>Colaborador</th><th>Matrícula</th><th>UID RFID</th><th>Evento</th><th>Resultado</th></tr></thead>
+  <tbody>
+  {% for e in eventos %}
+    <tr>
+      <td>{{ e.id }}</td><td>{{ e.registrado_em or "—" }}</td><td>{{ e.nome or "Desconhecido" }}</td>
+      <td>{{ e.matricula or "—" }}</td><td><code>{{ e.uid }}</code></td><td>{{ e.evento }}</td>
+      <td><span class="etiqueta {{ 'sim' if e.resultado == 'permitido' else 'nao' }}">{{ e.resultado }}</span></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="vazio">Nenhum evento encontrado para este filtro.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

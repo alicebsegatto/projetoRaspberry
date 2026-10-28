@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Colaboradores | Controle RFID{% endblock %}
+{% block content %}
+<section class="cabecalho-pagina">
+  <div><h1>Colaboradores</h1><p>Dados carregados pela API do backend.</p></div>
+  <a class="botao principal" href="{{ url_for('novo_colaborador') }}">+ Novo colaborador</a>
+</section>
+<div class="alerta aviso">A API recebida permite listar e cadastrar colaboradores. Edição e exclusão estão temporariamente desabilitadas até o backend oferecer as rotas PUT/PATCH e DELETE.</div>
+<form class="busca" method="get" action="{{ url_for('index') }}">
+  <input name="q" value="{{ busca }}" placeholder="Buscar por nome, matrícula, função ou RFID" aria-label="Buscar colaboradores">
+  <button class="botao" type="submit">Buscar</button>
+  {% if busca %}<a class="botao secundario" href="{{ url_for('index') }}">Limpar</a>{% endif %}
+</form>
+<div class="cartao tabela-wrap">
+<table>
+  <thead><tr><th>Nome</th><th>Matrícula</th><th>Função</th><th>ID RFID</th><th>Autorizado</th><th>Ativo</th><th>Ações</th></tr></thead>
+  <tbody>
+  {% for c in colaboradores %}
+    <tr>
+      <td>{{ c.nome }}</td>
+      <td>{{ c.matricula or "—" }}</td>
+      <td>{{ c.funcao or "—" }}</td>
+      <td><code>{{ c.cartao_rfid or "Sem cartão" }}</code></td>
+      <td><span class="etiqueta {{ 'sim' if c.autorizado else 'nao' }}">{{ 'Sim' if c.autorizado else 'Não' }}</span></td>
+      <td>{{ 'Sim' if c.ativo else 'Não' }}</td>
+      <td class="acoes">
+        <a class="botao pequeno" href="{{ url_for('eventos_colaborador', colaborador_id=c.id) }}">Eventos</a>
+        <button class="botao pequeno indisponivel" type="button" disabled title="A API ainda não possui rota de edição">Editar</button>
+        <button class="botao pequeno perigo indisponivel" type="button" disabled title="A API ainda não possui rota de exclusão">Excluir</button>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="vazio">Nenhum colaborador encontrado, ou a API não retornou registros.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

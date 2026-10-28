@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Login | Controle RFID{% endblock %}
+{% block content %}
+<section class="login-area">
+  <form class="cartao login-card" method="post" action="{{ url_for('login') }}">
+    <div class="login-simbolo">RFID</div>
+    <h1>Entrar no sistema</h1>
+    <p class="subtitulo">Use seu nome cadastrado e o UID do cartão RFID.</p>
+    <label for="nome">Login</label>
+    <input id="nome" name="nome" type="text" autocomplete="username" placeholder="Nome completo cadastrado" required autofocus>
+    <label for="senha">Senha</label>
+    <input id="senha" name="senha" type="password" autocomplete="current-password" placeholder="UID do cartão RFID" required>
+    <button class="botao principal botao-largo" type="submit">Entrar</button>
+    <p class="dica-login">Se a API estiver indisponível, verifique se o backend está em execução.</p>
+  </form>
+</section>
+{% endblock %}

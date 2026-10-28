@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }} | Controle RFID{% endblock %}
+{% block content %}
+<section class="cabecalho-pagina"><div><h1>{{ titulo }}</h1><p>Os dados serão enviados à API; o cartão será associado em uma segunda requisição.</p></div></section>
+<form class="cartao formulario" method="post">
+  <label for="nome">Nome completo *
+    <input id="nome" name="nome" required maxlength="120" value="{{ colaborador.nome if colaborador else '' }}">
+  </label>
+  <label for="matricula">Matrícula *
+    <input id="matricula" name="matricula" required maxlength="50" value="{{ colaborador.matricula if colaborador else '' }}" placeholder="Ex.: MAT004">
+  </label>
+  <label for="funcao">Função *
+    <input id="funcao" name="funcao" required maxlength="100" value="{{ colaborador.funcao if colaborador else '' }}" placeholder="Ex.: Analista">
+  </label>
+  <label for="tag_rfid">UID do cartão RFID *
+    <input id="tag_rfid" name="tag_rfid" required maxlength="100" value="{{ colaborador.tag_rfid if colaborador else '' }}" placeholder="UID exatamente como lido pelo leitor">
+    <small>A API possui a rota POST /cartoes para associar o UID ao cadastro.</small>
+  </label>
+  <label for="autorizado">Permissão de acesso
+    <select id="autorizado" name="autorizado">
+      <option value="1" {% if colaborador and colaborador.autorizado|string == '1' %}selected{% endif %}>Autorizado</option>
+      <option value="0" {% if not colaborador or colaborador.autorizado|string != '1' %}selected{% endif %}>Não autorizado</option>
+    </select>
+  </label>
+  <div class="botoes-form"><button class="botao principal" type="submit">Cadastrar</button><a class="botao secundario" href="{{ url_for('index') }}">Cancelar</a></div>
+</form>
+{% endblock %}
