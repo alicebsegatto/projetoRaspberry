@@ -4,12 +4,6 @@
 
 **Controle de acesso com Raspberry Pi, API Flask, dashboard web e análise de dados com Pandas.**
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)
-![Pandas](https://img.shields.io/badge/Pandas-Jupyter-150458?logo=pandas&logoColor=white)
-![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-RC522-A22846?logo=raspberrypi&logoColor=white)
-
 </div>
 
 ---
@@ -24,7 +18,6 @@
 - [Instalação e execução](#instalação-e-execução)
 - [Dashboard de monitoramento](#dashboard-de-monitoramento)
 - [Análise de dados (Jupyter)](#análise-de-dados-jupyter)
-- [Referência da API](#referência-da-api)
 - [Banco de dados](#banco-de-dados)
 - [Modo offline](#modo-offline)
 - [Autores](#autores)
@@ -74,19 +67,6 @@ flowchart TD
     I -->|Sim| K["SAÍDA<br/>LED verde + bipe"]
 ```
 
-### Sinais do hardware
-
-| Situação | LED | Buzzer |
-|---|---|---|
-| Acesso liberado (entrada ou saída) | Verde aceso por 2 s | 1 bipe curto |
-| Acesso negado (sem autorização) | Vermelho | 3 bipes |
-| Tag desconhecida (possível invasão) | Vermelho piscando 10x | 10 bipes curtos |
-| API indisponível e cartão fora do cache | Vermelho | 3 bipes |
-
-A cada leitura, o evento é gravado em `logs_acesso.csv` (local) e enviado à API (banco SQLite). Ao encerrar com `Ctrl+C`, o sistema imprime um relatório com o tempo de permanência de cada colaborador no dia, as tentativas negadas e as tags desconhecidas.
-
----
-
 ## Tecnologias
 
 - **Python 3.9+**
@@ -111,7 +91,7 @@ projetoRaspberry/
 ├── hardware/                 # Versão standalone (sem API), mantida como referência
 │   ├── cadastro.py           # Colaboradores fixos em um dicionário Python
 │   └── sistema.py            # Mesma lógica do sistema integrado, porém consultando o dicionário local
-├── analise_dados.ipynb       # Notebook com os indicadores de acesso e permanência
+├── analise_dados.ipynb       # Notebook com as perguntas respondidas
 ├── logs_acesso.csv           # Log local de eventos gerado pela Raspberry (dados de exemplo/teste)
 ├── requirements.txt          # Dependências Python do servidor (Flask e Pandas)
 ├── .gitignore                # Arquivos ignorados pelo Git
@@ -400,58 +380,6 @@ Antes de rodar, ajuste na primeira célula e nas seguintes:
 | Colaborador do tempo de permanência | `matricula` | `"MAT001"` |
 
 A API precisa estar rodando para o notebook funcionar.
-
----
-
-## Referência da API
-
-Base: `http://IP_DO_SERVIDOR:5000`. As rotas marcadas com **Login** exigem sessão de administrador (cookie obtido em `POST /login`).
-
-| Método | Rota | Acesso | Descrição |
-|---|---|---|---|
-| `GET` | `/` | Público | Página inicial com a lista de rotas |
-| `GET` | `/health` | Público | Verifica se a API está online |
-| `POST` | `/login` | Público | Autentica o administrador (`usuario`, `senha`) |
-| `POST` | `/logout` | Login | Encerra a sessão |
-| `GET` | `/colaboradores` | Login | Lista colaboradores com o UID do cartão |
-| `POST` | `/colaboradores` | Login | Cadastra colaborador (`matricula`, `nome`, `funcao`, `autorizado`) |
-| `PUT` / `PATCH` | `/colaboradores/<id>` | Login | Edita campos do colaborador (inclusive `autorizado` e `ativo`) |
-| `DELETE` | `/colaboradores/<id>` | Login | Desativa o colaborador e o cartão (exclusão lógica) |
-| `POST` | `/cartoes` | Login | Vincula um cartão (`uid`, `colaborador_id`) |
-| `PUT` / `PATCH` | `/colaboradores/<id>/cartao` | Login | Cadastra ou troca o cartão do colaborador (`uid`) |
-| `POST` | `/rfid/validar` | Público | Valida um UID e informa se o acesso é permitido |
-| `POST` | `/acessos/registrar` | Público | Registra um evento de acesso |
-| `GET` | `/acessos` | Login | Últimos 100 registros |
-| `GET` | `/monitoramento` | Login | Indicadores, últimos acessos, quem está na sala e alertas recentes |
-
-### Exemplo: resposta de `POST /rfid/validar`
-
-```json
-{
-  "permitido": true,
-  "motivo": "autorizado",
-  "mensagem": "Acesso permitido.",
-  "colaborador": { "id": 1, "matricula": "MAT001", "nome": "Alice", "funcao": "Pesquisadora" }
-}
-```
-
-Valores possíveis de `motivo`: `autorizado`, `acesso_nao_autorizado`, `colaborador_inativo` e `cartao_desconhecido`.
-
-### Exemplo: corpo de `POST /acessos/registrar`
-
-```json
-{
-  "uid": "702970395839",
-  "evento": "entrada",
-  "resultado": "permitido",
-  "data_hora": "2026-10-28T08:30:00-03:00",
-  "evento_id": "d3b07384-d9a0-4c3e-a2b1-0f3c8e2a9c11"
-}
-```
-
-- `evento`: `entrada`, `saida`, `negado` ou `desconhecido`
-- `resultado`: `permitido` ou `negado`
-- `data_hora` e `evento_id` são opcionais. O `evento_id` evita duplicidade quando um evento pendente é reenviado.
 
 ---
 
