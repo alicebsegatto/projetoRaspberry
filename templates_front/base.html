@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Controle RFID{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topo">
+  <div class="container topo-conteudo">
+    <a class="marca" href="{{ url_for('inicio') }}">Controle de Acesso RFID</a>
+    {% if session.get('colaborador_id') %}
+    <nav aria-label="Navegação principal">
+      <a href="{{ url_for('index') }}">Colaboradores</a>
+      <a href="{{ url_for('eventos') }}">Eventos</a>
+      <a href="{{ url_for('novo_colaborador') }}">Novo cadastro</a>
+      <a href="{{ url_for('verificar_api') }}">Status da API</a>
+      <span class="usuario">Olá, {{ session.get('colaborador_nome') }}</span>
+      <form class="form-logout" method="post" action="{{ url_for('logout') }}">
+        <button class="link-nav" type="submit">Sair</button>
+      </form>
+    </nav>
+    {% endif %}
+  </div>
+</header>
+<main class="container">
+  {% with mensagens = get_flashed_messages(with_categories=true) %}
+    {% if mensagens %}
+      {% for categoria, mensagem in mensagens %}
+        <div class="alerta {{ categoria }}">{{ mensagem }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="container rodape">Projeto acadêmico — interface conectada à API de controle RFID.</footer>
+</body>
+</html>

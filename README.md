@@ -3,7 +3,7 @@
 ## Requisitos
 - O backend/API do integrante precisa estar executando.
 - Por padrão, o front espera a API em `http://127.0.0.1:5000`.
-- O front executa em `http://127.0.0.1:5001` para não conflitar com a API.
+- O front executa em `http://127.0.0.1:5003` para não conflitar com a API.
 
 ## Instalação no Ubuntu
 Na pasta deste projeto:
@@ -15,7 +15,7 @@ pip install -r requirements.txt
 python front.py
 ```
 
-Abra `http://127.0.0.1:5001`.
+Abra `http://127.0.0.1:5003`.
 
 ## Se a API estiver em outro computador
 Configure o endereço IP do computador do backend (não use localhost nesse caso):
