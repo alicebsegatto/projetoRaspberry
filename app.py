@@ -1,3 +1,4 @@
+```python
 from flask import Flask, jsonify, request
 from database import get_connection, init_db
 
@@ -46,10 +47,7 @@ def listar_colaboradores():
             ORDER BY c.nome
         """).fetchall()
 
-        return jsonify([
-            dict(colaborador)
-            for colaborador in colaboradores
-        ])
+        return jsonify([dict(c) for c in colaboradores])
 
     finally:
         connection.close()
@@ -60,17 +58,9 @@ def cadastrar_colaborador():
     dados = request.get_json(silent=True)
 
     if not isinstance(dados, dict):
-        return jsonify({
-            "erro": "Envie os dados em formato JSON."
-        }), 400
+        return jsonify({"erro": "Envie os dados em formato JSON."}), 400
 
-    campos_obrigatorios = [
-        "matricula",
-        "nome",
-        "funcao"
-    ]
-
-    for campo in campos_obrigatorios:
+    for campo in ["matricula", "nome", "funcao"]:
         if not isinstance(dados.get(campo), str) or not dados[campo].strip():
             return jsonify({
                 "erro": f"O campo '{campo}' e obrigatorio."
@@ -83,25 +73,17 @@ def cadastrar_colaborador():
             "erro": "O campo 'autorizado' deve ser true ou false."
         }), 400
 
-    matricula = dados["matricula"].strip()
-    nome = dados["nome"].strip()
-    funcao = dados["funcao"].strip()
-
     connection = get_connection()
 
     try:
         cursor = connection.execute("""
-            INSERT INTO colaboradores (
-                matricula,
-                nome,
-                funcao,
-                autorizado
-            )
+            INSERT INTO colaboradores
+                (matricula, nome, funcao, autorizado)
             VALUES (?, ?, ?, ?)
         """, (
-            matricula,
-            nome,
-            funcao,
+            dados["matricula"].strip(),
+            dados["nome"].strip(),
+            dados["funcao"].strip(),
             int(autorizado)
         ))
 
@@ -109,11 +91,7 @@ def cadastrar_colaborador():
 
         return jsonify({
             "mensagem": "Colaborador cadastrado com sucesso.",
-            "id": cursor.lastrowid,
-            "matricula": matricula,
-            "nome": nome,
-            "funcao": funcao,
-            "autorizado": autorizado
+            "id": cursor.lastrowid
         }), 201
 
     except Exception as erro:
@@ -125,7 +103,6 @@ def cadastrar_colaborador():
             }), 409
 
         app.logger.exception("Erro ao cadastrar colaborador")
-
         return jsonify({
             "erro": "Nao foi possivel cadastrar o colaborador."
         }), 500
@@ -142,12 +119,14 @@ def listar_acessos():
         registros = connection.execute("""
             SELECT
                 r.id,
+                r.colaborador_id,
                 r.uid,
                 r.evento,
                 r.resultado,
                 r.registrado_em,
                 c.matricula,
-                c.nome
+                c.nome,
+                c.autorizado
             FROM registros_acesso r
             LEFT JOIN colaboradores c
                 ON c.id = r.colaborador_id
@@ -155,10 +134,7 @@ def listar_acessos():
             LIMIT 100
         """).fetchall()
 
-        return jsonify([
-            dict(registro)
-            for registro in registros
-        ])
+        return jsonify([dict(r) for r in registros])
 
     finally:
         connection.close()
@@ -202,22 +178,19 @@ def monitoramento():
     finally:
         connection.close()
 
+
 @app.route("/cartoes", methods=["POST"])
 def cadastrar_cartao():
     dados = request.get_json(silent=True)
 
     if not isinstance(dados, dict):
-        return jsonify({
-            "erro": "Envie os dados em formato JSON."
-        }), 400
+        return jsonify({"erro": "Envie os dados em formato JSON."}), 400
 
     uid = dados.get("uid")
     colaborador_id = dados.get("colaborador_id")
 
     if not isinstance(uid, str) or not uid.strip():
-        return jsonify({
-            "erro": "O UID do cartao e obrigatorio."
-        }), 400
+        return jsonify({"erro": "O UID do cartao e obrigatorio."}), 400
 
     if (
         isinstance(colaborador_id, bool)
@@ -268,7 +241,6 @@ def cadastrar_cartao():
             }), 409
 
         app.logger.exception("Erro ao cadastrar cartao RFID")
-
         return jsonify({
             "erro": "Nao foi possivel cadastrar o cartao."
         }), 500
@@ -276,175 +248,16 @@ def cadastrar_cartao():
     finally:
         connection.close()
 
+
 @app.route("/rfid/validar", methods=["POST"])
 def validar_rfid():
     dados = request.get_json(silent=True)
 
     if not isinstance(dados, dict):
-        return jsonify({
-            "erro": "Envie os dados em formato JSON."
-        }), 400
+        return jsonify({"erro": "Envie os dados em formato JSON."}), 400
 
     uid = dados.get("uid")
 
     if not isinstance(uid, str) or not uid.strip():
-        return jsonify({
-            "erro": "O UID do cartao e obrigatorio."
-        }), 400
+        return jsonify({"erro": "O UID do cartao e obrigatorio."}), 400
 
-    uid = uid.strip()
-
-    connection = get_connection()
-
-    try:
-        registro = connection.execute("""
-            SELECT
-                c.id AS colaborador_id,
-                c.matricula,
-                c.nome,
-                c.funcao,
-                c.autorizado,
-                c.ativo,
-                cr.uid
-            FROM cartoes_rfid cr
-            INNER JOIN colaboradores c
-                ON c.id = cr.colaborador_id
-            WHERE cr.uid = ?
-              AND cr.ativo = 1
-        """, (uid,)).fetchone()
-
-        if registro is None:
-            return jsonify({
-                "permitido": False,
-                "motivo": "cartao_desconhecido",
-                "mensagem": "Cartao nao cadastrado."
-            }), 200
-
-        colaborador = dict(registro)
-
-        if not colaborador["ativo"]:
-            return jsonify({
-                "permitido": False,
-                "motivo": "colaborador_inativo",
-                "mensagem": "Colaborador inativo."
-            }), 200
-
-        if not colaborador["autorizado"]:
-            return jsonify({
-                "permitido": False,
-                "motivo": "acesso_nao_autorizado",
-                "mensagem": "Acesso negado.",
-                "colaborador": {
-                    "matricula": colaborador["matricula"],
-                    "nome": colaborador["nome"]
-                }
-            }), 200
-
-        return jsonify({
-            "permitido": True,
-            "motivo": "autorizado",
-            "mensagem": "Acesso permitido.",
-            "colaborador": {
-                "id": colaborador["colaborador_id"],
-                "matricula": colaborador["matricula"],
-                "nome": colaborador["nome"],
-                "funcao": colaborador["funcao"]
-            }
-        }), 200
-
-    finally:
-        connection.close()
-
-@app.route("/acessos/registrar", methods=["POST"])
-def registrar_acesso():
-    dados = request.get_json(silent=True)
-
-    if not isinstance(dados, dict):
-        return jsonify({
-            "erro": "Envie os dados em formato JSON."
-        }), 400
-
-    uid = dados.get("uid")
-    evento = dados.get("evento")
-    resultado = dados.get("resultado")
-
-    eventos_validos = [
-        "entrada",
-        "saida",
-        "negado",
-        "desconhecido"
-    ]
-
-    resultados_validos = [
-        "permitido",
-        "negado"
-    ]
-
-    if not isinstance(uid, str) or not uid.strip():
-        return jsonify({
-            "erro": "O UID do cartao e obrigatorio."
-        }), 400
-
-    if evento not in eventos_validos:
-        return jsonify({
-            "erro": "Evento invalido."
-        }), 400
-
-    if resultado not in resultados_validos:
-        return jsonify({
-            "erro": "Resultado invalido."
-        }), 400
-
-    connection = get_connection()
-
-    try:
-        cartao = connection.execute("""
-            SELECT c.id
-            FROM cartoes_rfid cr
-            INNER JOIN colaboradores c
-                ON c.id = cr.colaborador_id
-            WHERE cr.uid = ?
-        """, (uid.strip(),)).fetchone()
-
-        colaborador_id = (
-            cartao["id"] if cartao is not None else None
-        )
-
-        connection.execute("""
-            INSERT INTO registros_acesso (
-                colaborador_id,
-                uid,
-                evento,
-                resultado
-            )
-            VALUES (?, ?, ?, ?)
-        """, (
-            colaborador_id,
-            uid.strip(),
-            evento,
-            resultado
-        ))
-
-        connection.commit()
-
-        return jsonify({
-            "mensagem": "Registro de acesso salvo com sucesso.",
-            "uid": uid.strip(),
-            "evento": evento,
-            "resultado": resultado
-        }), 201
-
-    except Exception:
-        connection.rollback()
-        app.logger.exception("Erro ao registrar acesso")
-
-        return jsonify({
-            "erro": "Nao foi possivel registrar o acesso."
-        }), 500
-
-    finally:
-        connection.close()
-
-if __name__ == "__main__":
-    init_db()
-    app.run(host="0.0.0.0", port=5000, debug=False)
