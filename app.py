@@ -1,9 +1,69 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
+from functools import wraps
+import os
+import hmac
 from database import get_connection, init_db
 
 app = Flask(__name__)
 
 
+app.config["SECRET_KEY"] = os.environ["FLASK_SECRET_KEY"]
+
+USUARIO_ADMIN = os.environ["ADMIN_USUARIO"]
+SENHA_ADMIN = os.environ["ADMIN_SENHA"]
+
+
+def login_obrigatorio(func):
+    @wraps(func)
+    def verificar_login(*args, **kwargs):
+        if not session.get("autenticado"):
+            return jsonify({
+                "erro": "Autenticacao necessaria."
+            }), 401
+
+        return func(*args, **kwargs)
+
+    return verificar_login
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    dados = request.get_json(silent=True)
+
+    if not isinstance(dados, dict):
+        return jsonify({
+            "erro": "Envie usuario e senha em JSON."
+        }), 400
+
+    usuario = dados.get("usuario")
+    senha = dados.get("senha")
+
+    if (
+        isinstance(usuario, str)
+        and isinstance(senha, str)
+        and hmac.compare_digest(usuario, USUARIO_ADMIN)
+        and hmac.compare_digest(senha, SENHA_ADMIN)
+    ):
+        session.clear()
+        session["autenticado"] = True
+
+        return jsonify({
+            "mensagem": "Login realizado com sucesso."
+        }), 200
+
+    return jsonify({
+        "erro": "Usuario ou senha incorretos."
+    }), 401
+
+
+@app.route("/logout", methods=["POST"])
+@login_obrigatorio
+def logout():
+    session.clear()
+
+    return jsonify({
+        "mensagem": "Logout realizado com sucesso."
+    }), 200
 
 @app.route("/", methods=["GET"])
 def inicio():
@@ -54,6 +114,7 @@ def health():
 
 
 @app.route("/colaboradores", methods=["GET"])
+@login_obrigatorio
 def listar_colaboradores():
     connection = get_connection()
 
@@ -83,6 +144,7 @@ def listar_colaboradores():
 
 
 @app.route("/colaboradores", methods=["POST"])
+@login_obrigatorio
 def cadastrar_colaborador():
     dados = request.get_json(silent=True)
 
@@ -162,6 +224,7 @@ def cadastrar_colaborador():
 
 
 @app.route("/acessos", methods=["GET"])
+@login_obrigatorio
 def listar_acessos():
     connection = get_connection()
 
@@ -192,6 +255,7 @@ def listar_acessos():
 
 
 @app.route("/monitoramento", methods=["GET"])
+@login_obrigatorio
 def monitoramento():
     connection = get_connection()
 
@@ -219,17 +283,86 @@ def monitoramento():
             WHERE resultado = 'negado'
         """).fetchone()["total"]
 
+        
+        ultimos_acessos = connection.execute("""
+            SELECT
+                r.id,
+                r.uid,
+                r.evento,
+                r.resultado,
+                r.registrado_em,
+                c.nome,
+                c.matricula
+            FROM registros_acesso r
+            LEFT JOIN colaboradores c
+                ON c.id = r.colaborador_id
+            ORDER BY r.id DESC
+            LIMIT 20
+        """).fetchall()
+
+        
+        colaboradores_na_sala = connection.execute("""
+            SELECT
+                c.id,
+                c.nome,
+                c.matricula,
+                r.registrado_em AS entrada_em
+            FROM registros_acesso r
+            INNER JOIN colaboradores c
+                ON c.id = r.colaborador_id
+            WHERE r.id = (
+                SELECT MAX(r2.id)
+                FROM registros_acesso r2
+                WHERE r2.colaborador_id = c.id
+                  AND r2.evento IN ('entrada', 'saida')
+                  AND r2.resultado = 'permitido'
+            )
+            AND r.evento = 'entrada'
+            AND r.resultado = 'permitido'
+        """).fetchall()
+
+        
+        alertas_recentes = connection.execute("""
+            SELECT
+                r.id,
+                r.uid,
+                r.evento,
+                r.resultado,
+                r.registrado_em,
+                c.nome,
+                c.matricula
+            FROM registros_acesso r
+            LEFT JOIN colaboradores c
+                ON c.id = r.colaborador_id
+            WHERE r.resultado = 'negado'
+               OR r.evento = 'desconhecido'
+            ORDER BY r.id DESC
+            LIMIT 20
+        """).fetchall()
+
         return jsonify({
             "colaboradores_ativos": total_colaboradores,
             "colaboradores_autorizados": total_autorizados,
             "registros_de_acesso": total_acessos,
-            "acessos_negados": total_negados
+            "acessos_negados": total_negados,
+            "ultimos_acessos": [
+                dict(acesso) for acesso in ultimos_acessos
+            ],
+            "colaboradores_na_sala": [
+                dict(colaborador)
+                for colaborador in colaboradores_na_sala
+            ],
+            "alertas_recentes": [
+                dict(alerta)
+                for alerta in alertas_recentes
+            ]
         })
 
     finally:
         connection.close()
 
 @app.route("/cartoes", methods=["POST"])
+@login_obrigatorio
 def cadastrar_cartao():
     dados = request.get_json(silent=True)
 
@@ -473,6 +606,7 @@ def registrar_acesso():
         connection.close()
 
 @app.route("/colaboradores/<int:colaborador_id>", methods=["PUT", "PATCH"])
+@login_obrigatorio
 def editar_colaborador(colaborador_id):
     dados = request.get_json(silent=True)
 
@@ -542,6 +676,7 @@ def editar_colaborador(colaborador_id):
         connection.close()
 
 @app.route("/colaboradores/<int:colaborador_id>", methods=["DELETE"])
+@login_obrigatorio
 def excluir_colaborador(colaborador_id):
     connection = get_connection()
 
@@ -585,6 +720,7 @@ def excluir_colaborador(colaborador_id):
     "/colaboradores/<int:colaborador_id>/cartao",
     methods=["PUT", "PATCH"]
 )
+@login_obrigatorio
 def editar_cartao_colaborador(colaborador_id):
     dados = request.get_json(silent=True)
 
