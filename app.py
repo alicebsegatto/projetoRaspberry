@@ -4,18 +4,45 @@ from database import get_connection, init_db
 app = Flask(__name__)
 
 
+
 @app.route("/", methods=["GET"])
 def inicio():
     return """
-    <h1>Sistema de Segurança</h1>
+    <h1>Sistema de Segurança RFID</h1>
     <p>API de controle de acesso RFID.</p>
+
+    <h2>Funcionamento</h2>
     <ul>
-        <li><a href="/health">Verificar funcionamento</a></li>
-        <li><a href="/colaboradores">Listar colaboradores</a></li>
-        <li><a href="/acessos">Consultar registros de acesso</a></li>
-        <li><a href="/monitoramento">Monitoramento</a></li>
+        <li>GET /health - Verificar funcionamento</li>
+    </ul>
+
+    <h2>Colaboradores</h2>
+    <ul>
+        <li>GET /colaboradores - Listar colaboradores</li>
+        <li>POST /colaboradores - Cadastrar colaborador</li>
+        <li>PUT/PATCH /colaboradores/&lt;int:id&gt; - Editar colaborador</li>
+        <li>DELETE /colaboradores/&lt;int:id&gt; - Desativar colaborador</li>
+    </ul>
+
+    <h2>Cartões RFID</h2>
+    <ul>
+        <li>POST /cartoes - Cadastrar cartão</li>
+        <li>PUT/PATCH /colaboradores/&lt;int:id&gt;/cartao - Atualizar cartão</li>
+        <li>POST /rfid/validar - Validar cartão</li>
+    </ul>
+
+    <h2>Acessos</h2>
+    <ul>
+        <li>GET /acessos - Consultar registros</li>
+        <li>POST /acessos/registrar - Registrar acesso</li>
+    </ul>
+
+    <h2>Monitoramento</h2>
+    <ul>
+        <li>GET /monitoramento - Consultar indicadores</li>
     </ul>
     """
+
 
 
 @app.route("/health", methods=["GET"])
