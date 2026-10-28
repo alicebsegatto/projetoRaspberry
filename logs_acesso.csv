@@ -1,0 +1,5 @@
+data_hora,evento,id_cracha,nome,detalhe
+2026-10-27 20:25:00,TAG_DESCONHECIDA,702970395839,Desconhecido,Possivel tentativa de invasao
+2026-10-27 20:26:44,TAG_DESCONHECIDA,TESTE001,Desconhecido,Possivel tentativa de invasao
+2026-10-27 20:26:50,TAG_DESCONHECIDA,1,Desconhecido,Possivel tentativa de invasao
+2026-10-27 20:27:02,ENTRADA,CARTAO_TESTE_001,Colaborador Teste,Entrada autorizada
