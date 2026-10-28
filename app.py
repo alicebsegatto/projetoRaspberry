@@ -1,4 +1,3 @@
-```python
 from flask import Flask, jsonify, request
 from database import get_connection, init_db
 
