@@ -17,6 +17,7 @@
 - [Montagem do hardware](#montagem-do-hardware)
 - [Instalação e execução](#instalação-e-execução)
 - [Dashboard de monitoramento](#dashboard-de-monitoramento)
+- [Front-end de gerenciamento](#front-end-de-gerenciamento)
 - [Análise de dados (Jupyter)](#análise-de-dados-jupyter)
 - [Banco de dados](#banco-de-dados)
 - [Modo offline](#modo-offline)
@@ -28,13 +29,14 @@
 
 Sistema de controle de acesso a uma sala (ou laboratório) por **crachás RFID**. Ao aproximar o crachá do leitor, a Raspberry Pi lê o identificador (UID), consulta a API para saber se o cartão está cadastrado e autorizado, e sinaliza o resultado com LEDs e buzzer. Todos os eventos ficam registrados em um banco SQLite, ficam visíveis em um dashboard web e podem ser analisados em um Jupyter Notebook.
 
-O sistema é dividido em quatro componentes:
+O sistema é dividido em cinco componentes:
 
 | Componente | O que faz | Arquivos principais |
 |---|---|---|
 | **Hardware** | Raspberry Pi com leitor RFID RC522, 2 LEDs e buzzer. Identifica o crachá e sinaliza o resultado. | `sistema_integrado.py`, `cadastro_integrado.py` |
 | **Backend e banco de dados** | API Flask que valida credenciais, gerencia colaboradores e cartões e grava os registros no SQLite. | `app.py`, `database.py` |
 | **Monitoramento web** | Dashboard com total de entradas, saídas, acessos negados, tags desconhecidas e últimos registros. | `dash.py`, `templates/index.html` |
+| **Front-end de gerenciamento** | Interface web para cadastrar e consultar colaboradores, vincular cartões RFID e ver os eventos de acesso. | `frontend/front.py` |
 | **Análise de dados** | Notebook com Pandas para calcular indicadores de acesso e permanência. | `analise_dados.ipynb` |
 
 ---
@@ -48,6 +50,7 @@ flowchart LR
     C --> D[("SQLite<br/>seguranca.db")]
     D --> E["Dashboard<br/>dash.py :5001"]
     D --> F["Jupyter Notebook<br/>via API /acessos"]
+    G["Front-end de gerenciamento<br/>frontend/front.py"] <-->|"/colaboradores<br/>/cartoes<br/>/acessos"| C
 ```
 
 Decisão tomada a cada leitura de crachá:
@@ -70,7 +73,8 @@ flowchart TD
 ## Tecnologias
 
 - **Python 3.9+**
-- **Flask**: API REST e dashboard
+- **Flask**: API REST, dashboard e front-end de gerenciamento
+- **HTML + CSS (Jinja2)**: telas do dashboard e do front-end
 - **SQLite**: banco de dados local
 - **Pandas + Requests + Jupyter**: análise de dados
 - **RPi.GPIO + mfrc522**: leitura RFID e controle de LEDs e buzzer na Raspberry Pi
@@ -86,6 +90,17 @@ projetoRaspberry/
 ├── dash.py                   # Dashboard web (porta 5001) que lê direto do banco
 ├── templates/
 │   └── index.html            # Página do dashboard (cards de resumo + tabela dos últimos acessos)
+├── frontend/                 # Front-end de gerenciamento (consome a API)
+│   ├── front.py              # Servidor web: login, colaboradores, novo cadastro, eventos e status da API
+│   ├── requirements.txt      # Dependências do front-end (Flask e Requests)
+│   ├── templates_front/
+│   │   ├── base.html         # Layout base: menu de navegação e mensagens
+│   │   ├── login.html        # Tela de login
+│   │   ├── index.html        # Lista e busca de colaboradores
+│   │   ├── form.html         # Formulário de novo colaborador + cartão RFID
+│   │   └── eventos.html      # Tabela de eventos de acesso com filtro
+│   └── static/
+│       └── style.css         # Estilos das telas
 ├── cadastro_integrado.py     # Cliente da API usado pela Raspberry: valida cartão, cache local e fila de pendentes
 ├── sistema_integrado.py      # Programa principal da Raspberry: lê o RFID, aciona LEDs/buzzer e registra eventos
 ├── hardware/                 # Versão standalone (sem API), mantida como referência
@@ -147,7 +162,7 @@ Se quiser mudar os pinos, edite as constantes no topo de `sistema_integrado.py`.
 
 O projeto roda em **dois lugares**:
 
-- **Servidor** (seu computador ou a própria Raspberry): API, dashboard e notebook.
+- **Servidor** (seu computador ou a própria Raspberry): API, dashboard, front-end e notebook.
 - **Raspberry Pi**: leitor RFID, LEDs e buzzer.
 
 A API roda na porta **5000** e o dashboard na **5001**. A Raspberry só precisa alcançar a API pela rede.
@@ -350,6 +365,50 @@ Disponível em `http://IP_DO_SERVIDOR:5001` após executar `python dash.py`.
 - **Rota extra:** `GET /acessos` retorna os 100 últimos registros em JSON.
 
 A página não atualiza sozinha. Recarregue o navegador para ver novos eventos.
+
+---
+
+## Front-end de gerenciamento
+
+Interface web (Flask + Jinja2) para gerenciar colaboradores e cartões sem usar `curl`. Ela **não acessa o banco diretamente**: toda leitura e gravação passa pela API.
+
+**Telas**
+
+| Tela | O que faz |
+|---|---|
+| Login | Entra com o **nome** do colaborador e, como senha, o **UID do cartão RFID** cadastrado |
+| Colaboradores | Lista com busca por nome, matrícula, função ou UID, e atalho para os eventos de cada pessoa |
+| Novo colaborador | Cadastra nome, matrícula, função e permissão, e já vincula o UID do cartão |
+| Eventos | Tabela dos últimos acessos (filtro por nome e matrícula) |
+| Status da API | Verifica se a API está respondendo |
+
+**Como executar**
+
+Com a API já rodando, em outro terminal:
+
+```bash
+cd frontend
+pip install -r requirements.txt   # Flask e Requests
+python front.py
+```
+
+Acesse `http://127.0.0.1:5001`.
+
+Se a API estiver em outro computador, informe o endereço antes de iniciar:
+
+```bash
+export API_BASE_URL="http://IP_DO_SERVIDOR:5000"   # Windows: $env:API_BASE_URL="..."
+python front.py
+```
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `API_BASE_URL` | `http://127.0.0.1:5000` | Endereço da API |
+| `FLASK_SECRET_KEY` | `troque` | Chave da sessão do front. Defina uma própria |
+
+> **Porta:** o `front.py` usa a porta **5001**, a mesma do `dash.py`. Para rodar os dois ao mesmo tempo, altere a porta no final de um dos arquivos (`app.run(..., port=...)`).
+
+**Rotas da API usadas:** `GET /health`, `GET /colaboradores`, `POST /colaboradores`, `POST /cartoes` e `GET /acessos`.
 
 ---
 
